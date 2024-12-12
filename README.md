@@ -3,12 +3,13 @@
 > This ranching script is a massive ranching project that allows players to own thier own ranches! With features like herding, owning animals, ranch chores, selling animals, butchering and more this script ensures that you will love tending to your virtual ranch!
 
 # Requirements
-- VORP Core
-- VORP Utils
-- VORP Inventory
+- RSG framework
+- ~~VORP Core~~
+- ~~VORP Utils~~
+- ~~VORP Inventory~~
 - feather-menu
 - bcc-utils
-- VORP Character
+- ~~VORP Character~~
 - bcc-minigames
 
 # Features
