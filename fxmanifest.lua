@@ -31,6 +31,8 @@ client_scripts {
 }
 
 dependency {
+    'rsg-core',
+    'rsg-inventory',
     'feather-menu',
     'bcc-utils',
     'bcc-minigames',
