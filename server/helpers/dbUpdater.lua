@@ -48,12 +48,12 @@ CreateThread(function()
     MySQL.query.await([[
         CREATE TABLE `bcc_ranch_employees` (
             `ranch_id` INT(11) NULL DEFAULT NULL,
-            `citizen_id` VARCHAR(50) NULL DEFAULT NULL COLLATE 'utf8mb4_uca1400_ai_ci',
+            `citizen_id` VARCHAR(50) NULL DEFAULT NULL,
             UNIQUE INDEX `citizen_id` (`citizen_id`) USING BTREE,
             INDEX `FK_bcc_ranch_employees_bcc_ranch` (`ranch_id`) USING BTREE,
             CONSTRAINT `FK_bcc_ranch_employees_bcc_ranch` FOREIGN KEY (`ranch_id`) REFERENCES `bcc_ranch` (`ranchid`) ON UPDATE CASCADE ON DELETE CASCADE,
             CONSTRAINT `FK_bcc_ranch_employees_players` FOREIGN KEY (`citizen_id`) REFERENCES `players` (`citizenid`) ON UPDATE CASCADE ON DELETE CASCADE
-        )
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ]])
 
     --[[Add `ranchid` to the `characters` table if it doesn't exist
