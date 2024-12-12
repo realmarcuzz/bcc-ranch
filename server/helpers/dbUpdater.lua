@@ -46,7 +46,7 @@ CreateThread(function()
     ]])
 
     MySQL.query.await([[
-        CREATE TABLE `bcc_ranch_employees` (
+        CREATE TABLE IF NOT EXISTS `bcc_ranch_employees` (
             `ranch_id` INT(11) NULL DEFAULT NULL,
             `citizen_id` VARCHAR(50) NULL DEFAULT NULL,
             UNIQUE INDEX `citizen_id` (`citizen_id`) USING BTREE,
