@@ -1,5 +1,15 @@
-VORPcore = exports.vorp_core:GetCore()
 BccUtils = exports['bcc-utils'].initiate()
+RSGCore = exports['rsg-core']:GetCoreObject()
+lib.locale()
+VORPcore = {}
+
+function _U(string)
+  return locale(string)
+end
+
+function VORPcore.NotifyRightTip(label, ms)
+  lib.notify({ title = label, duration = ms })
+end
 
 if Config.devMode then
   -- Helper function for debugging
@@ -13,7 +23,6 @@ else
 end
 
 FeatherMenu =  exports['feather-menu'].initiate()
-BccUtils = exports['bcc-utils'].initiate()
 MiniGame = exports['bcc-minigames'].initiate()
 
 BCCRanchMenu = FeatherMenu:RegisterMenu('bcc-ranch:Menu', {

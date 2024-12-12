@@ -127,8 +127,8 @@ BccUtils.RPC:Register("bcc-ranch:CreateRanch", function(params, cb, source)
     local coords = params.coords
 
     -- Retrieve character data for creator and owner
-    local creatorChar = VORPcore.getUser(source).getUsedCharacter
-    local ownerChar = VORPcore.getUser(ownerSource).getUsedCharacter
+    local creatorChar = RSGCore.Functions.GetPlayer(source).PlayerData.charinfo
+    local ownerChar = RSGCore.Functions.GetPlayer(ownerSource).PlayerData.charinfo
 
     if not creatorChar or not ownerChar then
         VORPcore.NotifyRightTip(source, _U("invalidPlayer"), 4000)
@@ -168,7 +168,7 @@ BccUtils.RPC:Register("bcc-ranch:CreateRanch", function(params, cb, source)
         if #insertedRanch > 0 then
             local ranch = insertedRanch[1]
             -- Update the owner's character with the ranch ID
-            MySQL.query.await("UPDATE characters SET ranchid = ? WHERE charidentifier = ?", { ranch.ranchid, ownerCharId })
+         --   MySQL.query.await("UPDATE characters SET ranchid = ? WHERE charidentifier = ?", { ranch.ranchid, ownerCharId })
 
             -- Log the ranch creation
             BccUtils.Discord.sendMessage(Config.adminLogsWebhook, Config.WebhookTitle, Config.WebhookAvatar,
@@ -191,25 +191,15 @@ end)
 RegisterServerEvent('bcc-ranch:CheckIfPlayerOwnsARanch', function()
     local _source = source
     devPrint("Checking if player owns a ranch for source: " .. _source)
-    local character = VORPcore.getUser(_source).getUsedCharacter
-    local result = MySQL.query.await("SELECT * FROM bcc_ranch WHERE charidentifier = ?", { character.charIdentifier })
+    local character = RSGCore.Functions.GetPlayer(_source).PlayerData
+    local result = MySQL.query.await("SELECT * FROM bcc_ranch WHERE charidentifier = ?", { character.citizenid })
     if #result > 0 then
         Wait(50)
-        local data = {
-            id = 'Player_' .. result[1].ranchid .. '_bcc-ranchinv',
-            name = _U("inventoryName"),
-            limit = ConfigRanch.ranchSetup.ranchInvLimit,
-            acceptWeapons = true,
-            shared = true,
-            ignoreItemStackLimit = true,
-            whitelistItems = false,
-            UsePermissions = false,
-            UseBlackList = false,
-            whitelistWeapons = false
-        }
+        local data = { label = _U("inventoryName"), maxweight = 1000000, slots = ConfigRanch.ranchSetup.ranchInvLimit}
+        local stashName = 'Player_' .. result[1].ranchid .. '_bcc-ranchinv'
         
         -- Register the ranch inventory
-        exports.vorp_inventory:registerInventory(data)
+        exports['rsg-inventory']:CreateInventory(stashName, data)
 
         TriggerClientEvent("bcc-ranch:PlayerOwnsARanch", _source, result[1], true)
         if not RanchersOnline[result[1].ranchid] or not table.contains(RanchersOnline[result[1].ranchid], _source) then
@@ -227,29 +217,19 @@ AddEventHandler('bcc-ranch:CheckIfPlayerIsEmployee', function(recSource)
         _source = recSource
     end
     devPrint("Checking if player is an employee for source: " .. _source)
-    local character = VORPcore.getUser(_source).getUsedCharacter
+    local character = RSGCore.Functions.GetPlayer(_source).PlayerData
 
-    local result = MySQL.query.await("SELECT ranchid FROM characters WHERE charidentifier = ?", { character.charIdentifier })
+    local result = MySQL.query.await("SELECT ranchid FROM bcc_ranch WHERE charidentifier = ?", { character.citizenid })
     if #result > 0 then
         if result[1].ranchid ~= nil and 0 then
             local ranchEmployedAt = MySQL.query.await("SELECT * FROM bcc_ranch WHERE ranchid = ?", { result[1].ranchid })
             if #ranchEmployedAt > 0 then
                 Wait(50)
-                local data = {
-                    id = 'Player_' .. result[1].ranchid .. '_bcc-ranchinv',
-                    name = _U("inventoryName"),
-                    limit = ConfigRanch.ranchSetup.ranchInvLimit,
-                    acceptWeapons = true,
-                    shared = true,
-                    ignoreItemStackLimit = true,
-                    whitelistItems = false,
-                    UsePermissions = false,
-                    UseBlackList = false,
-                    whitelistWeapons = false
-                }
                 
+                local data = { label = _U("inventoryName"), maxweight = 1000000, slots = ConfigRanch.ranchSetup.ranchInvLimit}
+                local stashName = 'Player_' .. result[1].ranchid .. '_bcc-ranchinv'
                 -- Register the ranch inventory
-                exports.vorp_inventory:registerInventory(data)
+                exports['rsg-inventory']:CreateInventory(stashName, data)
                 TriggerClientEvent("bcc-ranch:PlayerOwnsARanch", _source, ranchEmployedAt[1], false)
                 if not RanchersOnline[result[1].ranchid] or not table.contains(RanchersOnline[result[1].ranchid], _source) then
                     newRancherOnline(_source, result[1].ranchid)
@@ -278,7 +258,7 @@ BccUtils.RPC:Register('bcc-ranch:AffectLedger', function(params, cb, source)
     devPrint("Affecting ledger for ranchId: " .. ranchId .. " with type: " .. type .. " and amount: " .. amount)
 
     -- Retrieve character and ranch data
-    local character = VORPcore.getUser(_source).getUsedCharacter
+    local character = RSGCore.Functions.GetPlayer(_source)
     local ranch = MySQL.query.await("SELECT * FROM bcc_ranch WHERE ranchid = ?", { ranchId })
 
     -- Check if ranch exists
@@ -287,7 +267,7 @@ BccUtils.RPC:Register('bcc-ranch:AffectLedger', function(params, cb, source)
             -- Handle withdrawal
             if amount <= tonumber(ranch[1].ledger) then
                 MySQL.update.await("UPDATE bcc_ranch SET ledger = ledger - ? WHERE ranchid = ?", { amount, ranchId })
-                character.addCurrency(0, amount)
+                character.Functions.AddMoney('cash', amount)
                 VORPcore.NotifyRightTip(_source, _U("withdrewFromLedger") .. " " .. amount, 4000)
                 UpdateAllRanchersRanchData(ranchId)
                 cb(true)
@@ -297,9 +277,9 @@ BccUtils.RPC:Register('bcc-ranch:AffectLedger', function(params, cb, source)
             end
         elseif type == "deposit" then
             -- Handle deposit
-            if tonumber(character.money) >= amount then
+            if tonumber(character.PlayerData.money.cash) >= amount then
                 MySQL.update.await("UPDATE bcc_ranch SET ledger = ledger + ? WHERE ranchid = ?", { amount, ranchId })
-                character.removeCurrency(0, amount)
+                character.Functions.RemoveMoney('cash', amount)
                 VORPcore.NotifyRightTip(_source, _U("depositedToLedger") .. " " .. amount, 4000)
                 UpdateAllRanchersRanchData(ranchId)
                 cb(true)
@@ -386,14 +366,14 @@ end)
 -- Employee area --
 RegisterServerEvent("bcc-ranch:EmployeeHired", function(ranchId, employeeSource, employeeCharId)
     devPrint("Employee hired for ranchId: " .. ranchId .. " with employeeSource: " .. employeeSource .. " and employeeCharId: " .. employeeCharId)
-    MySQL.update('UPDATE characters SET ranchid = ? WHERE charidentifier = ?', { ranchId, employeeCharId })
+    MySQL.update('INSERT INTO bcc_ranch_emloyees (ranch_id, citizen_id) VALUES  (?,?) ON DUPLICATE KEY UPDATE ranch_id = VALUES(ranch_id)', { ranchId, employeeCharId })
     TriggerEvent('bcc-ranch:CheckIfPlayerIsEmployee', tonumber(employeeSource))
 end)
 
 RegisterServerEvent("bcc-ranch:GetEmployeeList", function(ranchId, type)
     local _source = source
     devPrint("Getting employee list for ranchId: " .. ranchId .. " with type: " .. type)
-    local result = MySQL.query.await("SELECT firstname, lastname, charidentifier FROM characters WHERE ranchid = ?", { ranchId })
+    local result = MySQL.query.await("SELECT JSON_EXTRACT(p.charinfo, '$.firstname') AS firstname, JSON_EXTRACT(p.charinfo, '$.lastname') AS lastname, p.citizenid as charidentifier FROM bcc_ranch_employees re JOIN players p ON(p.citizenid = re.citizen_id) WHERE ranch_id = ?", { ranchId })
     if type == "fire" then
         if #result > 0 then
             TriggerClientEvent('bcc-ranch:FireEmployeesMenu', _source, result)
@@ -407,7 +387,7 @@ end)
 
 RegisterServerEvent('bcc-ranch:FireEmployee', function(charId)
     devPrint("Firing employee with charId: " .. charId)
-    MySQL.update.await('UPDATE characters SET ranchid=0 WHERE charidentifier = ?', { charId })
+    MySQL.update.await('DELETE FROM bcc_ranch_employees WHERE citizen_id = ?', { charId })
 end)
 
 BccUtils.RPC:Register("bcc-ranch:AnimalBought", function(params, cb, source)
@@ -415,18 +395,18 @@ BccUtils.RPC:Register("bcc-ranch:AnimalBought", function(params, cb, source)
     local animalType = params.animalType
     devPrint("Animal bought for ranchId: " .. ranchId .. " with animalType: " .. animalType)
 
-    local character = VORPcore.getUser(source).getUsedCharacter
+    local character = RSGCore.Functions.GetPlayer(source)
     local ranch = MySQL.query.await("SELECT * FROM bcc_ranch WHERE ranchid = ?", { ranchId })
     
     if #ranch > 0 then
         local function animalBoughtLogic(cost)
-            character.removeCurrency(0, cost)
+            character.Functions.RemoveMoney('cash', cost)
             VORPcore.NotifyRightTip(source, _U("animalBought"), 4000)
         end
 
         local buyAnimalOptions = {
             ['cows'] = function()
-                if character.money >= ConfigAnimals.animalSetup.cows.cost then
+                if character.PlayerData.money.cash >= ConfigAnimals.animalSetup.cows.cost then
                     if ranch[1].cows == "false" then
                         animalBoughtLogic(ConfigAnimals.animalSetup.cows.cost)
                         MySQL.update.await("UPDATE bcc_ranch SET cows='true' WHERE ranchid = ?", { ranchId })
@@ -439,7 +419,7 @@ BccUtils.RPC:Register("bcc-ranch:AnimalBought", function(params, cb, source)
                 end
             end,
             ['pigs'] = function()
-                if character.money >= ConfigAnimals.animalSetup.pigs.cost then
+                if character.PlayerData.money.cash >= ConfigAnimals.animalSetup.pigs.cost then
                     if ranch[1].pigs == "false" then
                         animalBoughtLogic(ConfigAnimals.animalSetup.pigs.cost)
                         MySQL.update.await("UPDATE bcc_ranch SET pigs='true' WHERE ranchid = ?", { ranchId })
@@ -452,7 +432,7 @@ BccUtils.RPC:Register("bcc-ranch:AnimalBought", function(params, cb, source)
                 end
             end,
             ['sheeps'] = function()
-                if character.money >= ConfigAnimals.animalSetup.sheeps.cost then
+                if character.PlayerData.money.cash >= ConfigAnimals.animalSetup.sheeps.cost then
                     if ranch[1].sheeps == "false" then
                         animalBoughtLogic(ConfigAnimals.animalSetup.sheeps.cost)
                         MySQL.update.await("UPDATE bcc_ranch SET sheeps='true' WHERE ranchid = ?", { ranchId })
@@ -465,7 +445,7 @@ BccUtils.RPC:Register("bcc-ranch:AnimalBought", function(params, cb, source)
                 end
             end,
             ['goats'] = function()
-                if character.money >= ConfigAnimals.animalSetup.goats.cost then
+                if character.PlayerData.money.cash >= ConfigAnimals.animalSetup.goats.cost then
                     if ranch[1].goats == "false" then
                         animalBoughtLogic(ConfigAnimals.animalSetup.goats.cost)
                         MySQL.update.await("UPDATE bcc_ranch SET goats='true' WHERE ranchid = ?", { ranchId })
@@ -478,7 +458,7 @@ BccUtils.RPC:Register("bcc-ranch:AnimalBought", function(params, cb, source)
                 end
             end,
             ['chickens'] = function()
-                if character.money >= ConfigAnimals.animalSetup.chickens.cost then
+                if character.PlayerData.money.cash >= ConfigAnimals.animalSetup.chickens.cost then
                     if ranch[1].chickens == "false" then
                         animalBoughtLogic(ConfigAnimals.animalSetup.chickens.cost)
                         MySQL.update.await("UPDATE bcc_ranch SET chickens='true' WHERE ranchid = ?", { ranchId })
@@ -512,13 +492,13 @@ BccUtils.RPC:Register("bcc-ranch:InsertAnimalRelatedCoords", function(params, cb
         return
     end
 
-    local user = VORPcore.getUser(_source)
+    local user = RSGCore.Functions.GetPlayer(_source)
     if not user then
         devPrint("Error: User not found for source: " .. tostring(_source))
         return
     end
 
-    local character = user.getUsedCharacter
+    local character = user.PlayerData
     if not character then
         devPrint("Error: No character found for user: " .. tostring(_source))
         return
@@ -580,9 +560,9 @@ BccUtils.RPC:Register("bcc-ranch:InsertAnimalRelatedCoords", function(params, cb
         devPrint("Valid type provided: " .. type)
         if moneyToRemove then
             devPrint("Cost to remove: " .. moneyToRemove)
-            devPrint("Character money: " .. tostring(character.money))
+            devPrint("Character money: " .. tostring(character.money.cash))
 
-            if character.money >= moneyToRemove then
+            if character.money.cash >= moneyToRemove then
                 devPrint("Sufficient funds. Removing money and updating coordinates.")
                 character.removeCurrency(0, moneyToRemove)
                 updateTable[type]()

@@ -1,14 +1,15 @@
 AllPlayersTable = {}
 
 BccUtils.RPC:Register("bcc-ranch:AdminCheck", function(params, cb, recSource)
-    local user = VORPcore.getUser(recSource)
-    local character = user.getUsedCharacter
-    if not character then
+    local user = RSGCore.Functions.GetPlayer(recSource)
+    if not user then
         return cb(false)
     end
-    if character.group == Config.adminGroup then
+
+    if IsPlayerAceAllowed(recSource, "command") then
         return cb(true)
     end
+
     return cb(false)
 end)
 
@@ -25,16 +26,16 @@ AddEventHandler('bcc-ranch:GetPlayers', function()
     local data = {}
 
     for _, player in ipairs(AllPlayersTable) do
-        local User = VORPcore.getUser(player)
+        local User = RSGCore.Functions.GetPlayer(player)
         if User then
-            local Character = User.getUsedCharacter
+            local Character = User.PlayerData.charinfo
 
             local playername = Character.firstname .. ' ' .. Character.lastname
 
             data[tostring(player)] = {
                 serverId = player,
                 PlayerName = playername,
-                staticid = Character.charIdentifier,
+                staticid = User.PlayerData.citizenid,
             }
         end
     end
@@ -82,4 +83,4 @@ CreateThread(function()
     end
 end)
 
-BccUtils.Versioner.checkFile(GetCurrentResourceName(), 'https://github.com/BryceCanyonCounty/bcc-ranch')
+--BccUtils.Versioner.checkFile(GetCurrentResourceName(), 'https://github.com/BryceCanyonCounty/bcc-ranch')

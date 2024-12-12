@@ -1,8 +1,17 @@
 IsAdmin, RanchData, IsOwnerOfRanch, IsInMission = false, nil, false, false
 local ranchBlip = nil
 
-RegisterNetEvent('vorp:SelectedCharacter')
-AddEventHandler('vorp:SelectedCharacter', function()
+RegisterCommand('ranchfix', function(source, args)
+    IsAdmin = BccUtils.RPC:CallAsync("bcc-ranch:AdminCheck")
+    --TriggerServerEvent('bcc-ranch:AdminCheck')
+    local player = GetPlayerServerId(tonumber(PlayerId()))
+    TriggerServerEvent("bcc-ranch:StoreAllPlayers", player)
+    TriggerServerEvent('bcc-ranch:CheckIfPlayerOwnsARanch')
+    TriggerServerEvent('bcc-ranch:CheckIfPlayerIsEmployee')
+end)
+
+RegisterNetEvent('RSGCore:Client:OnPlayerLoaded')
+AddEventHandler('RSGCore:Client:OnPlayerLoaded', function()
     IsAdmin = BccUtils.RPC:CallAsync("bcc-ranch:AdminCheck")
     --TriggerServerEvent('bcc-ranch:AdminCheck')
     local player = GetPlayerServerId(tonumber(PlayerId()))

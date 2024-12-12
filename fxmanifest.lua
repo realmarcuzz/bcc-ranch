@@ -3,12 +3,15 @@ fx_version "adamant"
 rdr3_warning 'I acknowledge that this is a prerelease build of RedM, and I am aware my resources *will* become incompatible once RedM ships.'
 
 lua54 'yes'
-author 'BCC Team @Jake2k4'
+author 'BCC Team @Jake2k4 (marcuzz RSG)'
 
 shared_scripts {
-    '/configs/*.lua',
-    'locale.lua',
-    'languages/*.lua'
+    '@ox_lib/init.lua',
+    '/configs/*.lua'
+}
+
+files {
+    'locales/*.json'
 }
 
 server_scripts {
@@ -28,9 +31,6 @@ client_scripts {
 }
 
 dependency {
-    'vorp_core',
-    'vorp_character',
-    'vorp_inventory',
     'feather-menu',
     'bcc-utils',
     'bcc-minigames',

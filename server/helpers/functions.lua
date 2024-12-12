@@ -1,5 +1,16 @@
-VORPcore = exports.vorp_core:GetCore()
 BccUtils = exports['bcc-utils'].initiate()
+RSGCore = exports['rsg-core']:GetCoreObject()
+
+lib.locale()
+VORPcore = {}
+
+function _U(string)
+    return locale(string)
+end
+
+function VORPcore:NotifyRightTip(src, label, ms) 
+    TriggerClientEvent('ox_lib:notify', src, { title = label, duration = ms })
+end
 
 if Config.devMode then
     -- Helper function for debugging
